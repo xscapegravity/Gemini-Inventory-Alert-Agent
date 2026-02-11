@@ -1,0 +1,5 @@
+{
+  "name": "Inventory Alert Agent",
+  "description": "An intelligent supply chain analysis tool that identifies inventory risks (Shortfalls, Oversupply, Dead Stock) and generates executive summaries using Gemini 3 Pro.",
+  "requestFramePermissions": []
+}

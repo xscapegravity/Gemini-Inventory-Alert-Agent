@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Loader2, AlertCircle, ShieldCheck, Lock, ArrowRight, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Loader2, AlertCircle, ShieldCheck, Lock, ArrowRight, ShieldAlert, Beaker } from 'lucide-react';
 import { FileUpload } from './components/FileUpload';
 import { AnalysisDashboard } from './components/AnalysisDashboard';
+import { TestSuite } from './components/TestSuite';
 import { parseFile, analyzeInventory } from './utils/dataProcessor';
 import { AggregatedAnalysis } from './types';
 
@@ -19,6 +20,7 @@ function App() {
   const [passcode, setPasscode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState(false);
+  const [isTestSuiteOpen, setIsTestSuiteOpen] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +130,12 @@ function App() {
           </div>
           
           <div className="flex items-center gap-4">
+             <button 
+                onClick={() => setIsTestSuiteOpen(true)}
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors"
+              >
+                <Beaker className="w-3 h-3" /> Diagnostics
+              </button>
              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md flex items-center gap-1.5 border border-emerald-100">
                 <ShieldCheck className="w-3 h-3" /> Agent Authenticated
               </span>
@@ -173,6 +181,8 @@ function App() {
           />
         )}
       </main>
+
+      <TestSuite isOpen={isTestSuiteOpen} onClose={() => setIsTestSuiteOpen(false)} />
     </div>
   );
 }

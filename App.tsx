@@ -8,7 +8,7 @@ import { parseFile, analyzeInventory } from './utils/dataProcessor';
 import { AggregatedAnalysis } from './types';
 
 // The secure passcode for accessing the application.
-const SECRET_PASSCODE = "yuKVek24";
+const SECRET_PASSCODE = "******";
 
 function App() {
   const [analysis, setAnalysis] = useState<AggregatedAnalysis | null>(null);

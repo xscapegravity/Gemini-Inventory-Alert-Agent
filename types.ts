@@ -1,3 +1,4 @@
+
 export interface RawRow {
   [key: string]: string | number | undefined;
 }
@@ -7,11 +8,15 @@ export interface InventoryItem {
   sku: string;
   dc: string;
   demandType: string;
-  mohTotal: number;
+  // MOH Components
+  mohBase: number;
+  transit: number;
+  woo: number;
+  mohTotal: number; // Sum of the above
+  
   accuracy: number;
   onHand: number;
   threeMonthActuals: number;
-  // New Supplier Metrics
   supplier: string;
   leadTime: number; // in days
   otd: number; // On-time delivery percentage (0.0 - 1.0)
@@ -36,6 +41,6 @@ export interface AggregatedAnalysis {
   oversupply: AnalysisResult[];
   deadStock: AnalysisResult[];
   supplierRisk: AnalysisResult[];
-  allItems: InventoryItem[]; // Added for full dataset visualization
+  allItems: InventoryItem[]; 
   totalItems: number;
 }

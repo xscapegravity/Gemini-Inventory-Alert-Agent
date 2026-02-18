@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Loader2, AlertCircle, ShieldCheck, Lock, ArrowRight, ShieldAlert, Beaker } from 'lucide-react';
 import { FileUpload } from './components/FileUpload';
@@ -8,7 +7,7 @@ import { parseFile, analyzeInventory } from './utils/dataProcessor';
 import { AggregatedAnalysis } from './types';
 
 // The secure passcode for accessing the application.
-const SECRET_PASSCODE = "******";
+const SECRET_PASSCODE = "yuKVek24";
 
 function App() {
   const [analysis, setAnalysis] = useState<AggregatedAnalysis | null>(null);
@@ -177,7 +176,8 @@ function App() {
           <AnalysisDashboard 
             analysis={analysis} 
             fileName={fileName} 
-            onReset={handleReset} 
+            onReset={handleReset}
+            accessToken={SECRET_PASSCODE}
           />
         )}
       </main>

@@ -1,9 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
 import { AggregatedAnalysis } from "../types";
-
-// Initialize the Gemini API client using the environment's injected key
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const formatForAI = (analysis: AggregatedAnalysis) => {
   const getTop = (list: any[]) => list.slice(0, 30).map(r => ({
@@ -18,7 +14,7 @@ const formatForAI = (analysis: AggregatedAnalysis) => {
     otd: (r.item.otd * 100).toFixed(0) + '%'
   }));
 
-  return JSON.stringify({
+  return {
     summary: {
       totalItems: analysis.totalItems,
       shortfallCount: analysis.shortfall.length,
@@ -32,54 +28,66 @@ const formatForAI = (analysis: AggregatedAnalysis) => {
       deadStock: getTop(analysis.deadStock),
       supplierRisks: getTop(analysis.supplierRisk)
     }
-  }, null, 2);
+  };
 };
 
-export const generateExecutiveReport = async (analysis: AggregatedAnalysis): Promise<{ emailText: string; htmlDashboard: string }> => {
-  const dataContext = formatForAI(analysis);
+/**
+ * Sends analysis context to the Python backend for AI synthesis.
+ * @param analysis The aggregated inventory data.
+ * @param token The auth token.
+ * @param diagnosticMode If true, requests a lightweight connectivity check instead of a full report.
+ */
+export const generateExecutiveReport = async (
+  analysis: AggregatedAnalysis, 
+  token: string, 
+  diagnosticMode = false
+): Promise<{ emailText: string; htmlDashboard: string }> => {
+  const targetUrl = '/api/analyze';
+  console.log(`[GeminiService] Starting report generation.`);
+  console.log(`[GeminiService] Mode: ${diagnosticMode ? 'Diagnostic (Lightweight)' : 'Production (Full)'}`);
+  console.log(`[GeminiService] Target URL: ${window.location.origin}${targetUrl}`);
+  
+  const context = formatForAI(analysis);
 
-  const prompt = `
-    You are a World-Class Supply Chain Strategy Consultant and Inventory Analyst.
-    
-    DATA CONTEXT (JSON):
-    ${dataContext}
-
-    TASK:
-    1. Write a high-impact Executive Summary in a professional email format addressed to the Director of Supply Chain. 
-       - Highlight the most critical "Potential Shortfall" items.
-       - Address "Supplier Risks" and their impact on fulfillment.
-       - Recommend immediate actions for "Dead Stock".
-    
-    2. Create a self-contained interactive HTML/Tailwind/Chart.js dashboard.
-       - It must be a single code block starting with \`\`\`html.
-       - It should visualize the data provided in the context.
-       - Use high-contrast colors (Red for risk, Green for healthy).
-
-    Respond with the email text first, followed by the HTML dashboard in a markdown block.
-  `;
+  // Shorter timeout for diagnostics (10s) vs full report (60s)
+  const timeoutDuration = diagnosticMode ? 10000 : 60000;
+  const controller = new AbortController();
+  const id = setTimeout(() => {
+      console.warn(`[GeminiService] Request timed out after ${timeoutDuration}ms`);
+      controller.abort();
+  }, timeoutDuration);
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.7,
-        topP: 0.95,
-      }
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token
+      },
+      // Pass the diagnosticMode flag to the backend
+      body: JSON.stringify({ context, diagnosticMode }),
+      signal: controller.signal
     });
 
-    const fullText = response.text || "";
-    
-    // Extract HTML dashboard using regex
-    const htmlMatch = fullText.match(/```html([\s\S]*?)```/);
-    const htmlDashboard = htmlMatch ? htmlMatch[1].trim() : "<!-- No dashboard generated -->";
-    
-    // The email text is everything else
-    const emailText = fullText.replace(/```html[\s\S]*?```/, '').trim();
+    clearTimeout(id);
+    console.log(`[GeminiService] Response received. Status: ${response.status} ${response.statusText}`);
 
-    return { emailText, htmlDashboard };
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Unknown server error" }));
+      console.error(`[GeminiService] Server Error Body:`, errorData);
+      throw new Error(errorData.error || `Server error (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data;
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    throw new Error(`AI Analysis failed: ${error.message || "Unknown error"}`);
+    clearTimeout(id);
+    if (error.name === 'AbortError') {
+      throw new Error(diagnosticMode 
+        ? "Diagnostic ping timed out. Backend is unresponsive." 
+        : "AI synthesis timed out. The report generation took too long - please try again.");
+    }
+    console.error("AI Analysis Communication Error:", error);
+    throw new Error(error.message || "Failed to communicate with intelligence server.");
   }
 };

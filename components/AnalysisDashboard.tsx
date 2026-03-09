@@ -60,8 +60,16 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
     { name: 'Shortfall', count: analysis.shortfall.length, color: '#ef4444' },
     { name: 'Oversupply', count: analysis.oversupply.length, color: '#3b82f6' },
     { name: 'Dead Stock', count: analysis.deadStock.length, color: '#f97316' },
-    { name: 'Supplier Risk', count: analysis.supplierRisk.length, color: '#9333ea' },
   ];
+
+  const shortfallTotalUnits = analysis.shortfall.reduce((sum, r) => sum + r.item.onHand, 0);
+  const oversupplyTotalUnits = analysis.oversupply.reduce((sum, r) => sum + r.item.onHand, 0);
+  const deadStockTotalUnits = analysis.deadStock.reduce((sum, r) => sum + r.item.onHand, 0);
+
+  const totalOnHand = analysis.allItems.reduce((sum, item) => sum + item.onHand, 0);
+  const totalWoo = analysis.allItems.reduce((sum, item) => sum + item.woo, 0);
+  const totalTransit = analysis.allItems.reduce((sum, item) => sum + item.transit, 0);
+  const totalSales3m = analysis.allItems.reduce((sum, item) => sum + item.salesthreeMonthActuals, 0);
 
   const supplierScatterData = analysis.allItems
     .filter(item => item.leadTime > 0 && item.supplier !== 'N/A')
@@ -73,47 +81,58 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
       risk: (item.leadTime > 60 || item.otd < 0.85) ? 'Risky' : 'Healthy'
     }));
 
-  const renderTable = (data: AnalysisResult[], type: RiskCategory) => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50">
-          <tr>
-            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">SKU</th>
-            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
-            <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">MOH (Total)</th>
-            <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Accuracy</th>
-            <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">On Hand</th>
-            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Supplier</th>
-            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-slate-100">
-          {data.map((row, idx) => (
-            <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{row.item.sku}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{row.item.dc}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">
-                <span className="font-bold">{row.item.mohTotal.toFixed(1)}</span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{(row.item.accuracy * 100).toFixed(0)}%</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 text-center font-bold font-mono">
-                {row.item.onHand.toLocaleString()}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{row.item.supplier}</td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                 <button 
-                  onClick={() => setInspectedItem(row.item)}
-                  className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
-                >
-                   <Info className="w-4 h-4" />
-                 </button>
-              </td>
+  const renderTable = (data: AnalysisResult[] | InventoryItem[], type: RiskCategory) => {
+    const isInventoryItem = (item: any): item is InventoryItem => 'sku' in item;
+    const items = isInventoryItem(data[0]) ? (data as InventoryItem[]).map(item => ({ item, risks: [] })) : data as AnalysisResult[];
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">SKU</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
+              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">MOH (Total)</th>
+              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Accuracy</th>
+              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">On Hand</th>
+              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">WOO</th>
+              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">In Transit</th>
+              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">3M Sales</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Supplier</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-100">
+            {items.map((row, idx) => (
+              <tr key={idx} className="hover:bg-slate-50 transition-colors group">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{row.item.sku}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{row.item.state}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">
+                  <span className="font-bold">{row.item.mohTotal.toFixed(1)}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{(row.item.accuracy * 100).toFixed(0)}%</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 text-center font-bold font-mono">
+                  {row.item.onHand.toLocaleString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.woo.toLocaleString()}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.transit.toLocaleString()}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.salesthreeMonthActuals.toLocaleString()}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{row.item.supplier}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                   <button 
+                    onClick={() => setInspectedItem(row.item)}
+                    className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                  >
+                     <Info className="w-4 h-4" />
+                   </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -153,7 +172,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                     >
                       <div className="text-left">
                         <p className="text-sm font-bold text-slate-900">{item.sku}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.dc}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.state}</p>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-300" />
                     </button>
@@ -191,7 +210,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                <div>
                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">{inspectedItem.sku}</h3>
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{inspectedItem.dc}</p>
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{inspectedItem.state}</p>
                </div>
                <button onClick={() => setInspectedItem(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                   <X className="w-6 h-6 text-slate-400" />
@@ -239,7 +258,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                 </div>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">3m Actuals Units</p>
-                  <p className="text-xl font-bold text-slate-900">{inspectedItem.threeMonthActuals.toLocaleString()}</p>
+                  <p className="text-xl font-bold text-slate-900">{inspectedItem.salesthreeMonthActuals.toLocaleString()}</p>
                 </div>
               </div>
 
@@ -282,41 +301,92 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
         <button onClick={() => setActiveTab(RiskCategory.SHORTFALL)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.SHORTFALL ? 'border-rose-500 bg-white ring-8 ring-rose-50' : 'border-white bg-white hover:border-slate-100'}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl shadow-inner"><AlertTriangle className="w-7 h-7" /></div>
-            <span className="text-4xl font-black text-rose-600">{analysis.shortfall.length}</span>
+            <div className="text-right">
+                <span className="text-2xl font-black text-rose-600 block">{analysis.shortfall.length.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Records</span>
+            </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Shortfalls</h3>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">High Stockout Risk</p>
+          <p className="text-2xl font-black text-slate-900 mt-1">{shortfallTotalUnits.toLocaleString()}</p>
+          <p className="text-[10px] text-slate-400 font-bold mt-1">Total Units at Risk</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.OVERSUPPLY)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.OVERSUPPLY ? 'border-blue-500 bg-white ring-8 ring-blue-50' : 'border-white bg-white hover:border-slate-100'}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-inner"><TrendingDown className="w-7 h-7" /></div>
-            <span className="text-4xl font-black text-blue-600">{analysis.oversupply.length}</span>
+            <div className="text-right">
+                <span className="text-2xl font-black text-blue-600 block">{analysis.oversupply.length.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Records</span>
+            </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Oversupply</h3>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">Excess Capital Tied</p>
+          <p className="text-2xl font-black text-slate-900 mt-1">{oversupplyTotalUnits.toLocaleString()}</p>
+          <p className="text-[10px] text-slate-400 font-bold mt-1">Total Units Excess</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.DEAD_STOCK)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.DEAD_STOCK ? 'border-orange-500 bg-white ring-8 ring-orange-50' : 'border-white bg-white hover:border-slate-100'}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl shadow-inner"><Archive className="w-7 h-7" /></div>
-            <span className="text-4xl font-black text-orange-600">{analysis.deadStock.length}</span>
+            <div className="text-right">
+                <span className="text-2xl font-black text-orange-600 block">{analysis.deadStock.length.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Records</span>
+            </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Dead Stock</h3>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">Stagnant Inventory SKUs</p>
+          <p className="text-2xl font-black text-slate-900 mt-1">{deadStockTotalUnits.toLocaleString()}</p>
+          <p className="text-[10px] text-slate-400 font-bold mt-1">Total Units Stagnant</p>
         </button>
 
-        <button onClick={() => setActiveTab(RiskCategory.SUPPLIER_RISK)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.SUPPLIER_RISK ? 'border-purple-500 bg-white ring-8 ring-purple-50' : 'border-white bg-white hover:border-slate-100'}`}>
+        <button onClick={() => setActiveTab(RiskCategory.ON_HAND)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.ON_HAND ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl shadow-inner"><Truck className="w-7 h-7" /></div>
-            <span className="text-4xl font-black text-purple-600">{analysis.supplierRisk.length}</span>
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shadow-inner"><Package className="w-7 h-7" /></div>
+            <div className="text-right">
+                <span className="text-2xl font-black text-indigo-600 block">{analysis.allItems.length.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Records</span>
+            </div>
           </div>
-          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Supplier Risk</h3>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">LT & OTD Failures</p>
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">On Hand</h3>
+          <p className="text-2xl font-black text-slate-900 mt-1">{totalOnHand.toLocaleString()}</p>
+        </button>
+
+        <button onClick={() => setActiveTab(RiskCategory.WOO)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.WOO ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shadow-inner"><Calculator className="w-7 h-7" /></div>
+            <div className="text-right">
+                <span className="text-2xl font-black text-indigo-600 block">{analysis.allItems.filter(i => i.woo > 0).length.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Records</span>
+            </div>
+          </div>
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">WOO</h3>
+          <p className="text-2xl font-black text-slate-900 mt-1">{totalWoo.toLocaleString()}</p>
+        </button>
+
+        <button onClick={() => setActiveTab(RiskCategory.IN_TRANSIT)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.IN_TRANSIT ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shadow-inner"><Truck className="w-7 h-7" /></div>
+            <div className="text-right">
+                <span className="text-2xl font-black text-indigo-600 block">{analysis.allItems.filter(i => i.transit > 0).length.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Records</span>
+            </div>
+          </div>
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">In Transit</h3>
+          <p className="text-2xl font-black text-slate-900 mt-1">{totalTransit.toLocaleString()}</p>
+        </button>
+
+        <button onClick={() => setActiveTab(RiskCategory.SALES_3M)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.SALES_3M ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shadow-inner"><FileText className="w-7 h-7" /></div>
+            <div className="text-right">
+                <span className="text-2xl font-black text-indigo-600 block">{analysis.allItems.filter(i => i.salesthreeMonthActuals > 0).length.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Records</span>
+            </div>
+          </div>
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">3m Actual Sales</h3>
+          <p className="text-2xl font-black text-slate-900 mt-1">{totalSales3m.toLocaleString()}</p>
         </button>
       </div>
 
@@ -346,33 +416,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                                   </Bar>
                               </BarChart>
                           </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-50 p-8 rounded-3xl border border-slate-100">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-2">
-                           <ScatterIcon className="w-4 h-4" /> Supplier Performance
-                        </h3>
-                        <div className="h-72">
-                             <ResponsiveContainer width="100%" height="100%">
-                                <ScatterChart>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                    <XAxis type="number" dataKey="x" name="Lead Time" unit="d" axisLine={false} tickLine={false}>
-                                        <Label value="Lead Time (Days)" position="bottom" offset={-5} style={{fontWeight: 800, fontSize: 10, fill: '#94a3b8'}} />
-                                    </XAxis>
-                                    <YAxis type="number" dataKey="y" name="OTD" unit="%" domain={[0, 100]} axisLine={false} tickLine={false}>
-                                        <Label value="OTD (%)" angle={-90} position="insideLeft" style={{fontWeight: 800, fontSize: 10, fill: '#94a3b8'}} />
-                                    </YAxis>
-                                    <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                                    <ReferenceLine x={60} stroke="#9333ea" strokeDasharray="5 5" opacity={0.5} />
-                                    <ReferenceLine y={85} stroke="#9333ea" strokeDasharray="5 5" opacity={0.5} />
-                                    <Scatter name="Suppliers" data={supplierScatterData}>
-                                         {supplierScatterData.map((entry, index) => (
-                                            <Cell key={index} fill={entry.risk === 'Risky' ? '#ef4444' : '#10b981'} />
-                                        ))}
-                                    </Scatter>
-                                </ScatterChart>
-                            </ResponsiveContainer>
                         </div>
                     </div>
                 </div>
@@ -405,7 +448,11 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
               activeTab === RiskCategory.SHORTFALL ? analysis.shortfall :
               activeTab === RiskCategory.OVERSUPPLY ? analysis.oversupply :
               activeTab === RiskCategory.DEAD_STOCK ? analysis.deadStock :
-              analysis.supplierRisk,
+              activeTab === RiskCategory.ON_HAND ? analysis.allItems :
+              activeTab === RiskCategory.WOO ? analysis.allItems.filter(i => i.woo > 0) :
+              activeTab === RiskCategory.IN_TRANSIT ? analysis.allItems.filter(i => i.transit > 0) :
+              activeTab === RiskCategory.SALES_3M ? analysis.allItems.filter(i => i.salesthreeMonthActuals > 0) :
+              [],
               activeTab as RiskCategory
             )
           )}

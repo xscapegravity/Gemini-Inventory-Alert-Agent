@@ -4,11 +4,11 @@ import { AggregatedAnalysis } from "../types";
 const formatForAI = (analysis: AggregatedAnalysis) => {
   const getTop = (list: any[]) => list.slice(0, 30).map(r => ({
     sku: r.item.sku,
-    dc: r.item.dc,
+    state: r.item.state,
     moh: r.item.mohTotal,
     accuracy: (r.item.accuracy * 100).toFixed(1) + '%',
     onHand: r.item.onHand,
-    sales3m: r.item.threeMonthActuals,
+    sales3m: r.item.salesthreeMonthActuals,
     supplier: r.item.supplier,
     leadTime: r.item.leadTime + 'd',
     otd: (r.item.otd * 100).toFixed(0) + '%'

@@ -23,16 +23,19 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   // Helper to create consistent mock items for unit testing
   const createMockItem = (overrides: Partial<InventoryItem>): InventoryItem => ({
     id: `mock-${Math.random().toString(36).substr(2, 9)}`,
-    sku: 'TEST-SKU',
-    dc: 'TEST-DC',
+    sku: 'SKU-0123456',
+    state: 'NSW',
     demandType: 'Static',
     mohBase: 1,
     transit: 0,
     woo: 0,
+    planned: 0,
     mohTotal: 1,
     accuracy: 0.9,
     onHand: 100,
-    threeMonthActuals: 50,
+    salesAVGGOneMonth: 0,
+    salesCurrentMonth: 0,
+    salesthreeMonthActuals: 50,
     supplier: 'Test Vendor',
     leadTime: 10,
     otd: 0.95,
@@ -110,7 +113,7 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       },
       {
         name: 'Unit Test: Dead Stock Logic',
-        item: createMockItem({ sku: 'DEAD', onHand: 50, threeMonthActuals: 0, mohTotal: 0 }),
+        item: createMockItem({ sku: 'DEAD', onHand: 50, salesthreeMonthActuals: 0, mohTotal: 0 }),
         check: (res: any) => res.deadStock.length === 1 && res.deadStock[0].item.sku === 'DEAD',
         expected: 'Identified as Dead Stock'
       },
@@ -122,7 +125,7 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       },
       {
         name: 'Unit Test: Healthy Item',
-        item: createMockItem({ sku: 'HEALTHY', mohTotal: 1.5, accuracy: 0.7, onHand: 100, threeMonthActuals: 100, leadTime: 30, otd: 0.95 }),
+        item: createMockItem({ sku: 'HEALTHY', mohTotal: 1.5, accuracy: 0.7, onHand: 100, salesthreeMonthActuals: 100, leadTime: 30, otd: 0.95 }),
         check: (res: any) => 
           res.shortfall.length === 0 && 
           res.oversupply.length === 0 && 

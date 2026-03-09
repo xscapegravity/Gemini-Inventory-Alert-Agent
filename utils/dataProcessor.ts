@@ -6,18 +6,23 @@ import { InventoryItem, RawRow, AnalysisResult, RiskCategory, AggregatedAnalysis
 const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const COLUMN_MAPPING = {
-  sku: ['sku'],
-  dc: ['rowlabels', 'dc', 'location', 'site', 'plant'],
-  demandType: ['demandtype', 'type', 'category'],
+  sku: ['sku'], //
+  state: ['rowlabels'],
+  demandType: ['demandtype'],
   // MOH Components
   mohBase: ['moh'],
-  transit: ['transit'],
-  woo: ['woo'],
+  transit: ['intransitandlanded'], //column P
+  woo: ['woo'], //column O
+  planned: ['planned'], //column Q
+
+  mohTotal: ['mohwoopl'], //Column AE
   // Metrics - Strictly target the specific accuracy string provided by the user
   // We explicitly avoid 'forecast' or 'acc' alone to prevent unit forecast mapping
   accuracy: ['3mactualsvforecastaccuracy'],
-  onHand: ['onhand', 'stock', 'quantity', 'oh'],
-  threeMonthActuals: ['3mactuals', 'sales', 'usage', 'consumption', 'demand'],
+  onHand: ['onhand'], //Column N 
+  salesAVGGOneMonth: ['1monthaveragesales'], //column Z
+  salesCurrentMonth: ['lastcurrentmonthsales'], //column AA
+  salesthreeMonthActuals: ['salesactual3months'], //column Y
   supplier: ['supplier', 'vendor', 'source'],
   leadTime: ['leadtime', 'lt', 'lead_time', 'days'],
   otd: ['otd', 'ontime', 'delivery', 'performance']
@@ -50,14 +55,18 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
   const firstRow = jsonData[0];
   const map: Record<keyof typeof COLUMN_MAPPING, string | undefined> = {
     sku: findKey(firstRow, COLUMN_MAPPING.sku),
-    dc: findKey(firstRow, COLUMN_MAPPING.dc),
+    state: findKey(firstRow, COLUMN_MAPPING.state),
     demandType: findKey(firstRow, COLUMN_MAPPING.demandType),
     mohBase: findKey(firstRow, COLUMN_MAPPING.mohBase),
     transit: findKey(firstRow, COLUMN_MAPPING.transit),
     woo: findKey(firstRow, COLUMN_MAPPING.woo),
+    planned: findKey(firstRow, COLUMN_MAPPING.planned),
+    mohTotal: findKey(firstRow, COLUMN_MAPPING.mohTotal),
     accuracy: findKey(firstRow, COLUMN_MAPPING.accuracy),
     onHand: findKey(firstRow, COLUMN_MAPPING.onHand),
-    threeMonthActuals: findKey(firstRow, COLUMN_MAPPING.threeMonthActuals),
+    salesAVGGOneMonth: findKey(firstRow, COLUMN_MAPPING.salesAVGGOneMonth),
+    salesCurrentMonth: findKey(firstRow, COLUMN_MAPPING.salesCurrentMonth),
+    salesthreeMonthActuals: findKey(firstRow, COLUMN_MAPPING.salesthreeMonthActuals),
     supplier: findKey(firstRow, COLUMN_MAPPING.supplier),
     leadTime: findKey(firstRow, COLUMN_MAPPING.leadTime),
     otd: findKey(firstRow, COLUMN_MAPPING.otd),
@@ -76,11 +85,12 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
       return Number(raw) || 0;
     };
 
-    // Rule: mohtotal = mohbase + transit + woo
+    // Rule: mohtotal = mohbase + transit + woo + planned (if not provided)
     const mohBase = parseNumeric(map.mohBase);
     const transit = parseNumeric(map.transit);
     const woo = parseNumeric(map.woo);
-    const mohTotal = mohBase + transit + woo;
+    const planned = parseNumeric(map.planned);
+    const mohTotal = map.mohTotal ? parseNumeric(map.mohTotal) : (mohBase + transit + woo + planned);
 
     // Accuracy Parsing Logic - Ensuring percentages are handled and large numbers are scaled
     let accuracyValue = parseNumeric(map.accuracy);
@@ -108,15 +118,18 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
     return {
       id: `row-${index}`,
       sku: getString(map.sku),
-      dc: getString(map.dc),
+      state: getString(map.state),
       demandType: getString(map.demandType),
       mohBase,
       transit,
       woo,
+      planned,
       mohTotal,
       accuracy: accuracyValue,
       onHand: parseNumeric(map.onHand),
-      threeMonthActuals: parseNumeric(map.threeMonthActuals),
+      salesAVGGOneMonth: parseNumeric(map.salesAVGGOneMonth),
+      salesCurrentMonth: parseNumeric(map.salesCurrentMonth),
+      salesthreeMonthActuals: parseNumeric(map.salesthreeMonthActuals),
       supplier: map.supplier ? getString(map.supplier) : 'N/A',
       leadTime: parseNumeric(map.leadTime),
       otd: otdValue,
@@ -138,12 +151,12 @@ export const analyzeInventory = (items: InventoryItem[]): AggregatedAnalysis => 
     }
 
     // Rule 2: Oversupply
-    if (item.mohTotal > 2 && item.accuracy <= 0.8) {
+    if (item.mohTotal > 2 && item.accuracy < 0.8) {
       oversupply.push({ item, risks: [RiskCategory.OVERSUPPLY] });
     }
 
     // Rule 3: Dead Stock
-    if (item.onHand > 0 && item.threeMonthActuals === 0) {
+    if (item.onHand > 0 && item.salesthreeMonthActuals === 0) {
       deadStock.push({ item, risks: [RiskCategory.DEAD_STOCK] });
     }
 

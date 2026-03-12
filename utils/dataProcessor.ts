@@ -23,9 +23,6 @@ const COLUMN_MAPPING = {
   salesAVGGOneMonth: ['1monthaveragesales'], //column Z
   salesCurrentMonth: ['lastcurrentmonthsales'], //column AA
   salesthreeMonthActuals: ['salesactual3months'], //column Y
-  supplier: ['supplier', 'vendor', 'source'],
-  leadTime: ['leadtime', 'lt', 'lead_time', 'days'],
-  otd: ['otd', 'ontime', 'delivery', 'performance']
 };
 
 const findKey = (row: RawRow, possibleKeys: string[]): string | undefined => {
@@ -67,9 +64,6 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
     salesAVGGOneMonth: findKey(firstRow, COLUMN_MAPPING.salesAVGGOneMonth),
     salesCurrentMonth: findKey(firstRow, COLUMN_MAPPING.salesCurrentMonth),
     salesthreeMonthActuals: findKey(firstRow, COLUMN_MAPPING.salesthreeMonthActuals),
-    supplier: findKey(firstRow, COLUMN_MAPPING.supplier),
-    leadTime: findKey(firstRow, COLUMN_MAPPING.leadTime),
-    otd: findKey(firstRow, COLUMN_MAPPING.otd),
   };
 
   return jsonData.map((row, index) => {
@@ -92,27 +86,12 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
     const planned = parseNumeric(map.planned);
     const mohTotal = map.mohTotal ? parseNumeric(map.mohTotal) : (mohBase + transit + woo + planned);
 
-    // Accuracy Parsing Logic - Ensuring percentages are handled and large numbers are scaled
+    // Accuracy Parsing Logic - Ensuring percentages are handled
     let accuracyValue = parseNumeric(map.accuracy);
     const rawAcc = map.accuracy ? row[map.accuracy] : null;
     
     if (typeof rawAcc === 'string' && rawAcc.includes('%')) {
       accuracyValue = parseFloat(rawAcc.replace('%', '')) / 100;
-    } else if (accuracyValue > 1.1) {
-      // If we accidentally get 85 (meaning 85%), scale it to 0.85
-      // This helps if the column is whole numbers instead of decimals
-      accuracyValue = accuracyValue / 100;
-    }
-
-    // Parse OTD
-    let otdValue = parseNumeric(map.otd);
-    const rawOtd = map.otd ? row[map.otd] : null;
-    if (typeof rawOtd === 'string' && rawOtd.includes('%')) {
-      otdValue = parseFloat(rawOtd.replace('%', '')) / 100;
-    } else if (otdValue > 1.1) {
-      otdValue = otdValue / 100;
-    } else if (!map.otd) {
-      otdValue = 1.0; 
     }
 
     return {
@@ -130,9 +109,6 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
       salesAVGGOneMonth: parseNumeric(map.salesAVGGOneMonth),
       salesCurrentMonth: parseNumeric(map.salesCurrentMonth),
       salesthreeMonthActuals: parseNumeric(map.salesthreeMonthActuals),
-      supplier: map.supplier ? getString(map.supplier) : 'N/A',
-      leadTime: parseNumeric(map.leadTime),
-      otd: otdValue,
       originalData: row,
     };
   });
@@ -142,7 +118,6 @@ export const analyzeInventory = (items: InventoryItem[]): AggregatedAnalysis => 
   const shortfall: AnalysisResult[] = [];
   const oversupply: AnalysisResult[] = [];
   const deadStock: AnalysisResult[] = [];
-  const supplierRisk: AnalysisResult[] = [];
 
   items.forEach(item => {
     // Rule 1: Potential Shortfall
@@ -159,18 +134,12 @@ export const analyzeInventory = (items: InventoryItem[]): AggregatedAnalysis => 
     if (item.onHand > 0 && item.salesthreeMonthActuals === 0) {
       deadStock.push({ item, risks: [RiskCategory.DEAD_STOCK] });
     }
-
-    // Rule 4: Supplier Risk
-    if (item.leadTime > 60 || item.otd < 0.85) {
-      supplierRisk.push({ item, risks: [RiskCategory.SUPPLIER_RISK] });
-    }
   });
 
   return { 
     shortfall, 
     oversupply, 
     deadStock, 
-    supplierRisk, 
     allItems: items, 
     totalItems: items.length
   };

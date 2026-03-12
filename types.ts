@@ -20,9 +20,6 @@ export interface InventoryItem {
   salesAVGGOneMonth: number;
   salesCurrentMonth: number;
   salesthreeMonthActuals: number;
-  supplier: string;
-  leadTime: number; // in days
-  otd: number; // On-time delivery percentage (0.0 - 1.0)
   originalData: RawRow;
 }
 
@@ -30,7 +27,6 @@ export enum RiskCategory {
   SHORTFALL = 'Potential Shortfall',
   OVERSUPPLY = 'Oversupply',
   DEAD_STOCK = 'Dead Stock',
-  SUPPLIER_RISK = 'Supplier Risk',
   HEALTHY = 'Healthy',
   ON_HAND = 'On Hand',
   WOO = 'WOO',
@@ -47,7 +43,6 @@ export interface AggregatedAnalysis {
   shortfall: AnalysisResult[];
   oversupply: AnalysisResult[];
   deadStock: AnalysisResult[];
-  supplierRisk: AnalysisResult[];
   allItems: InventoryItem[]; 
   totalItems: number;
 }

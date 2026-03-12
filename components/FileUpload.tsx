@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { UploadCloud } from 'lucide-react';
-import * as XLSX from 'xlsx'; // Import for type reference if needed, but we use logic in utils
 
 interface FileUploadProps {
   onFileUpload: (file: File) => void;

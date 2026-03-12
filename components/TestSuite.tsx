@@ -36,9 +36,6 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
     salesAVGGOneMonth: 0,
     salesCurrentMonth: 0,
     salesthreeMonthActuals: 50,
-    supplier: 'Test Vendor',
-    leadTime: 10,
-    otd: 0.95,
     originalData: {},
     ...overrides
   });
@@ -118,19 +115,12 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
         expected: 'Identified as Dead Stock'
       },
       {
-        name: 'Unit Test: Supplier Risk Logic',
-        item: createMockItem({ sku: 'RISK', leadTime: 70, otd: 0.9 }),
-        check: (res: any) => res.supplierRisk.length === 1 && res.supplierRisk[0].item.sku === 'RISK',
-        expected: 'Identified as Supplier Risk'
-      },
-      {
         name: 'Unit Test: Healthy Item',
-        item: createMockItem({ sku: 'HEALTHY', mohTotal: 1.5, accuracy: 0.7, onHand: 100, salesthreeMonthActuals: 100, leadTime: 30, otd: 0.95 }),
+        item: createMockItem({ sku: 'HEALTHY', mohTotal: 1.5, accuracy: 0.7, onHand: 100, salesthreeMonthActuals: 100 }),
         check: (res: any) => 
           res.shortfall.length === 0 && 
           res.oversupply.length === 0 && 
-          res.deadStock.length === 0 && 
-          res.supplierRisk.length === 0,
+          res.deadStock.length === 0,
         expected: 'No Risks Identified'
       }
     ];

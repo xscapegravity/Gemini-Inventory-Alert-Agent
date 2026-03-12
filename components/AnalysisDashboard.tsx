@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AggregatedAnalysis, AnalysisResult, RiskCategory, InventoryItem } from '../types';
-import { AlertTriangle, TrendingDown, Archive, CheckCircle, Download, FileText, Truck, BarChart2, ScatterChart as ScatterIcon, RefreshCcw, Loader2, Search, X, Info, ChevronRight, Calculator, Layers, Package } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Archive, CheckCircle, Download, FileText, Truck, BarChart2, ScatterChart as ScatterIcon, RefreshCcw, Loader2, Search, X, Info, ChevronRight, Calculator, Layers, Package, ChevronUp, ChevronDown } from 'lucide-react';
 import { generateExecutiveReport } from '../services/geminiService';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -22,6 +22,18 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
   const [apiError, setApiError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [inspectedItem, setInspectedItem] = useState<InventoryItem | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof InventoryItem; direction: 'asc' | 'desc' }>({
+    key: 'mohTotal',
+    direction: 'desc'
+  });
+
+  const requestSort = (key: keyof InventoryItem) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   const handleGenerateReport = async () => {
     setIsGeneratingReport(true);
@@ -71,53 +83,71 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
   const totalTransit = analysis.allItems.reduce((sum, item) => sum + item.transit, 0);
   const totalSales3m = analysis.allItems.reduce((sum, item) => sum + item.salesthreeMonthActuals, 0);
 
-  const supplierScatterData = analysis.allItems
-    .filter(item => item.leadTime > 0 && item.supplier !== 'N/A')
-    .map(item => ({
-      x: item.leadTime,
-      y: item.otd * 100,
-      name: item.supplier,
-      sku: item.sku,
-      risk: (item.leadTime > 60 || item.otd < 0.85) ? 'Risky' : 'Healthy'
-    }));
-
   const renderTable = (data: AnalysisResult[] | InventoryItem[], type: RiskCategory) => {
     const isInventoryItem = (item: any): item is InventoryItem => 'sku' in item;
     const items = isInventoryItem(data[0]) ? (data as InventoryItem[]).map(item => ({ item, risks: [] })) : data as AnalysisResult[];
+
+    const sortedItems = [...items].sort((a, b) => {
+      const aValue = a.item[sortConfig.key];
+      const bValue = b.item[sortConfig.key];
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+
+    const SortIndicator = ({ columnKey }: { columnKey: keyof InventoryItem }) => {
+      if (sortConfig.key !== columnKey) return <div className="w-4 h-4 opacity-0 group-hover:opacity-30 transition-opacity"><ChevronUp className="w-4 h-4" /></div>;
+      return sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-indigo-600" /> : <ChevronDown className="w-4 h-4 text-indigo-600" />;
+    };
+
+    const Header = ({ label, columnKey, center = false }: { label: string, columnKey: keyof InventoryItem, center?: boolean }) => (
+      <th 
+        onClick={() => requestSort(columnKey)}
+        className={`px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group ${center ? 'text-center' : 'text-left'}`}
+      >
+        <div className={`flex items-center gap-2 ${center ? 'justify-center' : ''}`}>
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+          <SortIndicator columnKey={columnKey} />
+        </div>
+      </th>
+    );
 
     return (
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">SKU</th>
-              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
-              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">MOH (Total)</th>
-              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Accuracy</th>
-              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">On Hand</th>
-              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">WOO</th>
-              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">In Transit</th>
-              <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">3M Sales</th>
-              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Supplier</th>
+              <Header label="SKU" columnKey="sku" />
+              <Header label="Location" columnKey="state" />
+              <Header label="MOH (Total)" columnKey="mohTotal" center />
+              <Header label="Accuracy" columnKey="accuracy" center />
+              <Header label="On Hand" columnKey="onHand" center />
+              <Header label="WOO" columnKey="woo" center />
+              <Header label="In Transit" columnKey="transit" center />
+              <Header label="3M Sales" columnKey="salesthreeMonthActuals" center />
               <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-100">
-            {items.map((row, idx) => (
+            {sortedItems.map((row, idx) => (
               <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{row.item.sku}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{row.item.state}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">
                   <span className="font-bold">{row.item.mohTotal.toFixed(1)}</span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{(row.item.accuracy * 100).toFixed(0)}%</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{(row.item.accuracy * 100).toFixed(2)}%</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 text-center font-bold font-mono">
                   {row.item.onHand.toLocaleString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.woo.toLocaleString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.transit.toLocaleString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.salesthreeMonthActuals.toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{row.item.supplier}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                    <button 
                     onClick={() => setInspectedItem(row.item)}
@@ -254,7 +284,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                 </div>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">3m Accuracy</p>
-                  <p className="text-xl font-bold text-slate-900">{(inspectedItem.accuracy * 100).toFixed(1)}%</p>
+                  <p className="text-xl font-bold text-slate-900">{(inspectedItem.accuracy * 100).toFixed(2)}%</p>
                 </div>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">3m Actuals Units</p>
@@ -311,8 +341,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Shortfalls</h3>
-          <p className="text-2xl font-black text-slate-900 mt-1">{shortfallTotalUnits.toLocaleString()}</p>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">Total Units at Risk</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.OVERSUPPLY)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.OVERSUPPLY ? 'border-blue-500 bg-white ring-8 ring-blue-50' : 'border-white bg-white hover:border-slate-100'}`}>
@@ -324,8 +352,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Oversupply</h3>
-          <p className="text-2xl font-black text-slate-900 mt-1">{oversupplyTotalUnits.toLocaleString()}</p>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">Total Units Excess</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.DEAD_STOCK)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.DEAD_STOCK ? 'border-orange-500 bg-white ring-8 ring-orange-50' : 'border-white bg-white hover:border-slate-100'}`}>
@@ -337,8 +363,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Dead Stock</h3>
-          <p className="text-2xl font-black text-slate-900 mt-1">{deadStockTotalUnits.toLocaleString()}</p>
-          <p className="text-[10px] text-slate-400 font-bold mt-1">Total Units Stagnant</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.ON_HAND)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.ON_HAND ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
@@ -350,7 +374,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">On Hand</h3>
-          <p className="text-2xl font-black text-slate-900 mt-1">{totalOnHand.toLocaleString()}</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.WOO)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.WOO ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
@@ -362,7 +385,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">WOO</h3>
-          <p className="text-2xl font-black text-slate-900 mt-1">{totalWoo.toLocaleString()}</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.IN_TRANSIT)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.IN_TRANSIT ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
@@ -374,7 +396,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">In Transit</h3>
-          <p className="text-2xl font-black text-slate-900 mt-1">{totalTransit.toLocaleString()}</p>
         </button>
 
         <button onClick={() => setActiveTab(RiskCategory.SALES_3M)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.SALES_3M ? 'border-indigo-500 bg-white ring-8 ring-indigo-50' : 'border-white bg-white hover:border-slate-100'}`}>
@@ -386,7 +407,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             </div>
           </div>
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">3m Actual Sales</h3>
-          <p className="text-2xl font-black text-slate-900 mt-1">{totalSales3m.toLocaleString()}</p>
         </button>
       </div>
 

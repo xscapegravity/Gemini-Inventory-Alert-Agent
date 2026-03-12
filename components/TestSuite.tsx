@@ -79,7 +79,11 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
             ok: false,
             status: 'failed',
             msg: "Connection Failed",
-            details: `Backend unreachable. Ensure 'app.py' is running on port 8080. Error: ${e.message}`,
+            details: `Backend unreachable. 
+              1. Ensure 'app.py' is running (check terminal). 
+              2. If local, verify port 8080 is open. 
+              3. If deployed, check Cloud Run logs for startup crashes.
+              Error: ${e.message}`,
             duration: Math.round(performance.now() - start)
         };
     }
@@ -213,6 +217,17 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
            throw new Error("Invalid diagnostic response signature");
         }
       } catch (e: any) {
+        let errorDetails = `Error: ${e.message}.`;
+        if (e.message.includes("401")) {
+            errorDetails += " Unauthorized: Check if ACCESS_TOKEN matches.";
+        } else if (e.message.includes("500")) {
+            errorDetails += " Server Error: Check if GEMINI_API_KEY is valid and has quota.";
+        } else if (e.message.includes("fetch")) {
+            errorDetails += " Network Error: The backend might have crashed during the AI call.";
+        } else {
+            errorDetails += " Check server logs for 'API_KEY' or 'Quota' issues.";
+        }
+
         currentResults[apiIndex] = {
           name: 'Integration: AI Service Check',
           status: 'failed',
@@ -220,7 +235,7 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
           actual: 'Test Failed',
           duration: Math.round(performance.now() - apiStart),
           type: 'api',
-          details: `Error: ${e.message}. Check server logs for 'API_KEY' issues.`
+          details: errorDetails
         };
       }
       setResults([...currentResults]);

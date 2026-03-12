@@ -68,6 +68,53 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
     document.body.removeChild(a);
   };
 
+  const handleDownloadCSV = () => {
+    let dataToDownload: InventoryItem[] = [];
+    
+    if (activeTab === 'Overview' || activeTab === RiskCategory.ON_HAND) {
+      dataToDownload = analysis.allItems;
+    } else if (activeTab === RiskCategory.SHORTFALL) {
+      dataToDownload = analysis.shortfall.map(r => r.item);
+    } else if (activeTab === RiskCategory.OVERSUPPLY) {
+      dataToDownload = analysis.oversupply.map(r => r.item);
+    } else if (activeTab === RiskCategory.DEAD_STOCK) {
+      dataToDownload = analysis.deadStock.map(r => r.item);
+    } else if (activeTab === RiskCategory.WOO) {
+      dataToDownload = analysis.allItems.filter(i => i.woo > 0);
+    } else if (activeTab === RiskCategory.IN_TRANSIT) {
+      dataToDownload = analysis.allItems.filter(i => i.transit > 0);
+    } else if (activeTab === RiskCategory.SALES_3M) {
+      dataToDownload = analysis.allItems.filter(i => i.salesthreeMonthActuals > 0);
+    }
+
+    if (dataToDownload.length === 0) return;
+
+    const headers = ["SKU", "Location", "MOH Total", "Accuracy", "On Hand", "WOO", "In Transit", "3M Sales"];
+    const csvRows = [
+      headers.join(','),
+      ...dataToDownload.map(item => [
+        `"${item.sku}"`,
+        `"${item.state}"`,
+        item.mohTotal.toFixed(2),
+        (item.accuracy * 100).toFixed(2) + '%',
+        item.onHand,
+        item.woo,
+        item.transit,
+        item.salesthreeMonthActuals
+      ].join(','))
+    ];
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `inventory_data_${activeTab.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const chartData = [
     { name: 'Shortfall', count: analysis.shortfall.length, color: '#ef4444' },
     { name: 'Oversupply', count: analysis.oversupply.length, color: '#3b82f6' },
@@ -215,6 +262,9 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
         </div>
 
         <div className="flex gap-4 w-full lg:w-auto">
+          <button onClick={handleDownloadCSV} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 text-indigo-600 bg-white border border-indigo-100 hover:bg-indigo-50 rounded-2xl font-bold transition-all shadow-sm">
+            <Download className="w-4 h-4" /> Download Data
+          </button>
           <button onClick={onReset} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl font-bold transition-all shadow-sm">
             <RefreshCcw className="w-4 h-4" /> Reset
           </button>

@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "start": "node server.ts",
+    "dev": "concurrently \"vite\" \"python app.py\"",
+    "start": "python app.py",
     "lint": "tsc --noEmit",
     "build": "vite build",
     "preview": "vite preview"

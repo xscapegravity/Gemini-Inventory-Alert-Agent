@@ -141,7 +141,7 @@ function App() {
       if (msg.includes("corrupted") || msg.includes("format")) {
         setError(`Data Format Error: The file might be corrupted or in an unsupported format. Please ensure it is a valid .xlsx or .csv file.`);
       } else if (msg.includes("mapping") || msg.includes("column")) {
-        setError(`Mapping Error: Could not find required columns. Please check if your file headers match the expected format (SKU, Location, MOH, etc.).`);
+        setError(`Mapping Error: Could not find required columns. Please check if your file headers match the expected format (SKU, Entity, MOH, etc.).`);
       } else {
         setError(`System Error: ${msg}. Try refreshing the page or checking your internet connection.`);
       }

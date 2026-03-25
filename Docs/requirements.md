@@ -1,8 +1,5 @@
 # Inventory Alert Agent - Requirements Document
 
-
-Do not delete
-
 ## 1. Project Overview
 The **Inventory Alert Agent** is a specialized supply chain intelligence platform designed to process complex inventory data, identify critical risks, and synthesize executive-level reports using Artificial Intelligence. It serves as a bridge between raw data exports and strategic decision-making.
 
@@ -17,7 +14,7 @@ The **Inventory Alert Agent** is a specialized supply chain intelligence platfor
 
 ### 2.2. Data Ingestion
 - **File Support**: Support for `.xlsx` and `.csv` file formats.
-- **Fuzzy Mapping**: Intelligent header mapping to handle variations in export formats (e.g., mapping "Row Labels" to "Location").
+- **Fuzzy Mapping**: Intelligent header mapping to handle variations in export formats (e.g., mapping "Row Labels" to "Entity").
 - **Data Normalization**: Automatic conversion of numeric strings, percentages, and null values (e.g., "NO SALE", "N/A") into clean numeric data.
 
 ### 2.3. Business Rules Engine (Analysis Logic)
@@ -33,25 +30,26 @@ The system must categorize inventory items into three primary risk categories ba
     - Intent: Identify stagnant inventory with no recent movement.
 
 ### 2.4. Intelligence Dashboard
-- **Executive Summary Cards**: Real-time counters for all risk categories and key metrics (WOO, Transit, Sales).
+- **Executive Summary Cards**: Real-time counters for primary risk categories and key metrics (WOO, Transit, Sales).
 - **Visual Analytics**: Bar charts visualizing the distribution of risks across the dataset.
 - **SKU Search**: Global search functionality to quickly locate specific items.
-- **Drilldown Tables**: Sortable tables for each risk category with key performance indicators (MOH, Accuracy, On Hand).
+- **Drilldown Tables**: Sortable tables for each risk category with key performance indicators (MOH, Accuracy, On Hand, 3M Forecast, 3M Sales).
 - **SKU Inspector**: A detailed modal view for individual items showing:
-    - Formula breakdown (MOH Base + Transit + WOO + Planned).
+    - Formula breakdown (MOH Base + Transit + WOO).
     - Risk status validation.
-    - Historical sales metrics.
+    - Historical sales and forecast metrics.
 
 ### 2.5. AI Synthesis & Reporting
-- **Executive Briefing**: Integration with Gemini 2.5 Flash to generate a professional email summary for Supply Chain Directors.
-- **Interactive HTML Report**: Generation of a self-contained, styled HTML dashboard for external sharing.
-- **Contextual Awareness**: The AI must receive a summarized context of critical items and overall statistics to ensure accurate synthesis.
+- **Executive Briefing Modal**: Integration with Gemini 3 Flash to generate a professional email summary for Supply Chain Directors.
+- **Professional Email Formatting**: The AI generates a structured email including a Subject Line, Formal Greeting, multi-paragraph analysis, and a Professional Signature.
+- **Copy Functionality**: A "Copy Email" button allows users to instantly copy the formatted text to their clipboard.
+- **Contextual Awareness**: The AI receives a summarized context of critical items and overall statistics to ensure accurate synthesis.
 
 ### 2.6. Data Export
-- **CSV Download**: Ability to export the currently filtered view or the entire dataset as a standardized CSV file for further analysis in Excel or other tools.
+- **CSV Download**: Ability to export the currently filtered view or the entire dataset as a standardized CSV file for further analysis.
 
 ### 2.7. Diagnostic Engine
-- **Test Suite**: A built-in diagnostic module to run unit tests against the analysis logic using mock data, ensuring the "Business Rules Engine" remains accurate after updates.
+- **Test Suite**: A built-in diagnostic module to run unit tests against the analysis logic using mock data.
 
 ---
 
@@ -65,18 +63,33 @@ The system must categorize inventory items into three primary risk categories ba
 - **File Processing**: SheetJS (XLSX).
 
 ### 3.2. Backend Stack
-- **Language**: Python 3.x.
-- **Framework**: Flask.
-- **AI Integration**: Google Generative AI SDK (Gemini 2.5 Flash).
+- **Runtime**: Node.js.
+- **Framework**: Express.
+- **AI Integration**: @google/genai SDK (Gemini 3 Flash Preview).
 - **Communication**: RESTful API with CORS support.
 
 ### 3.3. Deployment
-- **Containerization**: Docker-ready with `Dockerfile` and `docker-compose.yml`.
-- **Platform**: Optimized for Google Cloud Run or VPS hosting.
+- **Containerization**: Docker-ready.
+- **Platform**: Optimized for Google Cloud Run.
 
 ---
 
-## 4. Non-Functional Requirements
+## 4. Today's Updates (March 25, 2026)
+- **Terminology Update**: Consistently renamed "Location" to "Entity" across the UI and data processing logic.
+- **Data Expansion**: Integrated "3M Forecast" (`sales3mforecast`) into the data model and main analysis table.
+- **AI Report Enhancement**:
+    - Moved the AI-generated report from an inline section to a dedicated **Popup Modal**.
+    - Refined the AI prompt to generate a professional, email-ready format (Subject, Greeting, Paragraphs, Signature).
+    - Added a **"Copy Email"** button for instant clipboard access.
+    - Removed the "Export Dashboard" (HTML download) functionality to streamline the workflow.
+- **UI/UX Optimization**:
+    - Improved mobile header layout for better spacing and readability.
+    - Optimized table spacing (reduced padding, condensed typography, shortened labels) to minimize horizontal scrolling on standard displays.
+    - Removed the "3M Forecast" summary tile to declutter the dashboard while keeping the data in the table.
+
+---
+
+## 5. Non-Functional Requirements
 - **Performance**: Client-side processing of up to 10,000 rows without significant UI lag.
 - **Usability**: Modern, "Mission Control" aesthetic with high-contrast typography and intuitive navigation.
 - **Reliability**: Graceful handling of malformed data or API timeouts during AI generation.

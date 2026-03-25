@@ -70,10 +70,44 @@ services:
     restart: always
 ```
 
-### 4. Build and Launch
+### 4. Build and Launch (Docker)
 Run the following to start the container in the background:
 ```bash
 docker-compose up --build -d
+```
+
+---
+
+## 🚀 Manual Deployment (Without Docker)
+
+If you prefer to run the application directly on the host using **PM2**:
+
+### 1. Install Node.js & PM2
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g pm2
+```
+
+### 2. Install Dependencies & Build
+```bash
+npm install
+npm run build
+```
+
+### 3. Start with PM2
+```bash
+# Start the server using tsx (for rapid deployment)
+pm2 start "npx tsx server.ts" --name inventory-agent
+
+# OR: Start the production build (if you've compiled it)
+# pm2 start dist/server.js --name inventory-agent
+```
+
+### 4. Configure Startup
+```bash
+pm2 save
+pm2 startup
 ```
 
 ---

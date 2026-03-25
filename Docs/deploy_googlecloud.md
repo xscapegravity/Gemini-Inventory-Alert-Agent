@@ -45,7 +45,30 @@ This guide outlines the steps to deploy the Inventory Alert Agent to **Google Cl
 
 ---
 
-## 3. Post-Deployment
+## 3. Manual Deployment (via gcloud CLI)
+
+If you prefer to deploy manually from your local machine or a CI/CD pipeline without connecting GitHub:
+
+### 1. Build and Submit to Artifact Registry
+```bash
+# Replace [PROJECT_ID] with your actual project ID
+gcloud builds submit --tag gcr.io/[PROJECT_ID]/inventory-agent .
+```
+
+### 2. Deploy to Cloud Run
+```bash
+gcloud run deploy inventory-agent \
+  --image gcr.io/[PROJECT_ID]/inventory-agent \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 3000 \
+  --set-env-vars="GEMINI_API_KEY=[YOUR_KEY],ACCESS_TOKEN=yuKVek24,NODE_ENV=production"
+```
+
+---
+
+## 4. Post-Deployment
 - **URL**: Once the deployment is complete, Google Cloud will provide a public URL (e.g., `https://inventory-agent-xyz.a.run.app`).
 - **Health Check**: Verify the backend is online by visiting `https://[YOUR_URL]/api/health`.
 

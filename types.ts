@@ -20,6 +20,7 @@ export interface InventoryItem {
   salesAVGGOneMonth: number;
   salesCurrentMonth: number;
   salesthreeMonthActuals: number;
+  sales3mforecast: number;
   originalData: RawRow;
 }
 
@@ -31,6 +32,7 @@ export enum RiskCategory {
   ON_HAND = 'On Hand',
   WOO = 'WOO',
   IN_TRANSIT = 'In Transit',
+  SALES_3M_FORECAST = '3 Month Forecast',
   SALES_3M = '3 Month Actual Sales'
 }
 

@@ -7,7 +7,7 @@ const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const COLUMN_MAPPING = {
   sku: ['sku'], //
-  state: ['rowlabels'],
+  state: ['rowlabels', 'entity', 'location'],
   demandType: ['demandtype'],
   // MOH Components
   mohBase: ['moh'],
@@ -23,6 +23,7 @@ const COLUMN_MAPPING = {
   salesAVGGOneMonth: ['1monthaveragesales'], //column Z
   salesCurrentMonth: ['lastcurrentmonthsales'], //column AA
   salesthreeMonthActuals: ['salesactual3months'], //column Y
+  sales3mforecast: ['3mforecast'], //column AG
 };
 
 const findKey = (row: RawRow, possibleKeys: string[]): string | undefined => {
@@ -64,6 +65,7 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
     salesAVGGOneMonth: findKey(firstRow, COLUMN_MAPPING.salesAVGGOneMonth),
     salesCurrentMonth: findKey(firstRow, COLUMN_MAPPING.salesCurrentMonth),
     salesthreeMonthActuals: findKey(firstRow, COLUMN_MAPPING.salesthreeMonthActuals),
+    sales3mforecast: findKey(firstRow, COLUMN_MAPPING.sales3mforecast),
   };
 
   return jsonData.map((row, index) => {
@@ -109,6 +111,7 @@ export const parseFile = async (file: File): Promise<InventoryItem[]> => {
       salesAVGGOneMonth: parseNumeric(map.salesAVGGOneMonth),
       salesCurrentMonth: parseNumeric(map.salesCurrentMonth),
       salesthreeMonthActuals: parseNumeric(map.salesthreeMonthActuals),
+      sales3mforecast: parseNumeric(map.sales3mforecast),
       originalData: row,
     };
   });

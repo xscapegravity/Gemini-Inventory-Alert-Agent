@@ -36,6 +36,7 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
     salesAVGGOneMonth: 0,
     salesCurrentMonth: 0,
     salesthreeMonthActuals: 50,
+    sales3mforecast: 45,
     originalData: {},
     ...overrides
   });

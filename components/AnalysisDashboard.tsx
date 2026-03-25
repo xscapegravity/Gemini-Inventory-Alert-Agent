@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AggregatedAnalysis, AnalysisResult, RiskCategory, InventoryItem } from '../types';
-import { AlertTriangle, TrendingDown, Archive, CheckCircle, Download, FileText, Truck, BarChart2, ScatterChart as ScatterIcon, RefreshCcw, Loader2, Search, X, Info, ChevronRight, Calculator, Layers, Package, ChevronUp, ChevronDown } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Archive, CheckCircle, Download, FileText, Truck, BarChart2, ScatterChart as ScatterIcon, RefreshCcw, Loader2, Search, X, Info, ChevronRight, Calculator, Layers, Package, ChevronUp, ChevronDown, Copy, Check } from 'lucide-react';
 import { generateExecutiveReport } from '../services/geminiService';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -19,6 +19,8 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
   const [activeTab, setActiveTab] = useState<RiskCategory | 'Overview'>('Overview');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [generatedReport, setGeneratedReport] = useState<{ emailText: string, htmlDashboard: string } | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [inspectedItem, setInspectedItem] = useState<InventoryItem | null>(null);
@@ -41,11 +43,20 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
     try {
       const report = await generateExecutiveReport(analysis, accessToken);
       setGeneratedReport(report);
+      setShowReportModal(true);
     } catch (e: any) {
       console.error("Report Generation Error:", e);
       setApiError(e.message || "Failed to generate AI report. Please check your connection or try again later.");
     } finally {
       setIsGeneratingReport(false);
+    }
+  };
+
+  const handleCopyEmail = () => {
+    if (generatedReport) {
+      navigator.clipboard.writeText(generatedReport.emailText);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
@@ -55,18 +66,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
       item.sku.toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 5);
   }, [searchQuery, analysis.allItems]);
-
-  const downloadHtml = () => {
-    if (!generatedReport) return;
-    const blob = new Blob([generatedReport.htmlDashboard], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inventory_ai_dashboard_${new Date().toISOString().split('T')[0]}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
 
   const handleDownloadCSV = () => {
     let dataToDownload: InventoryItem[] = [];
@@ -83,13 +82,15 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
       dataToDownload = analysis.allItems.filter(i => i.woo > 0);
     } else if (activeTab === RiskCategory.IN_TRANSIT) {
       dataToDownload = analysis.allItems.filter(i => i.transit > 0);
+    } else if (activeTab === RiskCategory.SALES_3M_FORECAST) {
+      dataToDownload = analysis.allItems.filter(i => i.sales3mforecast > 0);
     } else if (activeTab === RiskCategory.SALES_3M) {
       dataToDownload = analysis.allItems.filter(i => i.salesthreeMonthActuals > 0);
     }
 
     if (dataToDownload.length === 0) return;
 
-    const headers = ["SKU", "Location", "MOH Total", "Accuracy", "On Hand", "WOO", "In Transit", "3M Sales"];
+    const headers = ["SKU", "Entity", "MOH Total", "Accuracy", "On Hand", "WOO", "In Transit", "3M Forecast", "3M Sales"];
     const csvRows = [
       headers.join(','),
       ...dataToDownload.map(item => [
@@ -100,6 +101,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
         item.onHand,
         item.woo,
         item.transit,
+        item.sales3mforecast,
         item.salesthreeMonthActuals
       ].join(','))
     ];
@@ -155,10 +157,10 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
     const Header = ({ label, columnKey, center = false }: { label: string, columnKey: keyof InventoryItem, center?: boolean }) => (
       <th 
         onClick={() => requestSort(columnKey)}
-        className={`px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group ${center ? 'text-center' : 'text-left'}`}
+        className={`px-3 py-4 cursor-pointer hover:bg-slate-100 transition-colors group ${center ? 'text-center' : 'text-left'}`}
       >
-        <div className={`flex items-center gap-2 ${center ? 'justify-center' : ''}`}>
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+        <div className={`flex items-center gap-1 ${center ? 'justify-center' : ''}`}>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter whitespace-nowrap">{label}</span>
           <SortIndicator columnKey={columnKey} />
         </div>
       </th>
@@ -166,41 +168,43 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
 
     return (
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200">
+        <table className="min-w-full divide-y divide-slate-200 table-auto">
           <thead className="bg-slate-50">
             <tr>
               <Header label="SKU" columnKey="sku" />
-              <Header label="Location" columnKey="state" />
-              <Header label="MOH (Total)" columnKey="mohTotal" center />
-              <Header label="Accuracy" columnKey="accuracy" center />
-              <Header label="On Hand" columnKey="onHand" center />
+              <Header label="Entity" columnKey="state" />
+              <Header label="MOH" columnKey="mohTotal" center />
+              <Header label="Acc" columnKey="accuracy" center />
+              <Header label="OH" columnKey="onHand" center />
               <Header label="WOO" columnKey="woo" center />
-              <Header label="In Transit" columnKey="transit" center />
-              <Header label="3M Sales" columnKey="salesthreeMonthActuals" center />
-              <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
+              <Header label="Transit" columnKey="transit" center />
+              <Header label="3MF" columnKey="sales3mforecast" center />
+              <Header label="3MS" columnKey="salesthreeMonthActuals" center />
+              <th className="px-3 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-tighter">Act</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-100">
             {sortedItems.map((row, idx) => (
               <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{row.item.sku}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{row.item.state}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">
+                <td className="px-3 py-4 whitespace-nowrap text-xs font-bold text-slate-900">{row.item.sku}</td>
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-slate-600">{row.item.state}</td>
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-slate-600 text-center font-mono">
                   <span className="font-bold">{row.item.mohTotal.toFixed(1)}</span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{(row.item.accuracy * 100).toFixed(2)}%</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 text-center font-bold font-mono">
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-slate-600 text-center font-mono">{(row.item.accuracy * 100).toFixed(1)}%</td>
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-indigo-600 text-center font-bold font-mono">
                   {row.item.onHand.toLocaleString()}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.woo.toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.transit.toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-center font-mono">{row.item.salesthreeMonthActuals.toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-slate-600 text-center font-mono">{row.item.woo.toLocaleString()}</td>
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-slate-600 text-center font-mono">{row.item.transit.toLocaleString()}</td>
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-slate-600 text-center font-mono">{row.item.sales3mforecast.toLocaleString()}</td>
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-slate-600 text-center font-mono">{row.item.salesthreeMonthActuals.toLocaleString()}</td>
+                <td className="px-3 py-4 whitespace-nowrap">
                    <button 
                     onClick={() => setInspectedItem(row.item)}
-                    className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                    className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
                   >
-                     <Info className="w-4 h-4" />
+                     <Info className="w-3.5 h-3.5" />
                    </button>
                 </td>
               </tr>
@@ -214,12 +218,12 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Search Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-        <div className="space-y-1 flex-1">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Intelligence Dashboard</h2>
-          <div className="flex items-center gap-3 text-xs font-bold text-slate-400 uppercase tracking-widest">
-            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{fileName}</span>
-            <span>&bull;</span>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200">
+        <div className="space-y-2 flex-1 w-full">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Intelligence Dashboard</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600 w-fit">{fileName}</span>
+            <span className="hidden sm:inline">&bull;</span>
             <span>{analysis.totalItems.toLocaleString()} SKUs Scanned</span>
           </div>
         </div>
@@ -261,17 +265,17 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             )}
         </div>
 
-        <div className="flex gap-4 w-full lg:w-auto">
-          <button onClick={handleDownloadCSV} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 text-indigo-600 bg-white border border-indigo-100 hover:bg-indigo-50 rounded-2xl font-bold transition-all shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-auto">
+          <button onClick={handleDownloadCSV} className="flex items-center justify-center gap-2 px-6 py-3.5 text-indigo-600 bg-white border border-indigo-100 hover:bg-indigo-50 rounded-2xl font-bold transition-all shadow-sm text-sm">
             <Download className="w-4 h-4" /> Download Data
           </button>
-          <button onClick={onReset} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl font-bold transition-all shadow-sm">
+          <button onClick={onReset} className="flex items-center justify-center gap-2 px-6 py-3.5 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl font-bold transition-all shadow-sm text-sm">
             <RefreshCcw className="w-4 h-4" /> Reset
           </button>
           <button
             onClick={handleGenerateReport}
             disabled={isGeneratingReport}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all disabled:opacity-50 font-bold shadow-indigo-200 shadow-xl active:scale-[0.98]"
+            className="flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all disabled:opacity-50 font-bold shadow-indigo-200 shadow-xl active:scale-[0.98] text-sm"
           >
             {isGeneratingReport ? (
               <><Loader2 className="animate-spin w-4 h-4" /> Synthesizing...</>
@@ -281,6 +285,47 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
           </button>
         </div>
       </div>
+
+      {/* AI Report Modal */}
+      {showReportModal && generatedReport && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
+          <div className="relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            <div className="p-6 sm:p-8 border-b border-slate-100 flex items-center justify-between bg-indigo-50/50">
+               <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white rounded-2xl shadow-sm">
+                    <CheckCircle className="w-8 h-8 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-black text-indigo-900 tracking-tight">Strategic Risk Assessment</h3>
+                    <p className="text-indigo-600/70 font-bold uppercase tracking-widest text-[10px]">AI-Generated Executive Briefing</p>
+                  </div>
+               </div>
+               <button onClick={() => setShowReportModal(false)} className="p-2 hover:bg-indigo-100 rounded-full transition-colors">
+                  <X className="w-6 h-6 text-indigo-400" />
+               </button>
+            </div>
+            
+            <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar flex-1">
+                <div className="bg-slate-50 p-8 sm:p-12 rounded-3xl border border-slate-100 shadow-inner">
+                    <div className="prose prose-indigo max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap font-sans text-base sm:text-lg">
+                        {generatedReport.emailText}
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-center gap-4">
+                <button onClick={handleCopyEmail} className="flex items-center justify-center gap-3 px-10 py-4 bg-indigo-600 text-white hover:bg-indigo-700 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-200 active:scale-[0.98]">
+                    {isCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    {isCopied ? 'Copied to Clipboard!' : 'Copy Email for Sending'}
+                </button>
+                <button onClick={() => setShowReportModal(false)} className="sm:hidden flex items-center justify-center gap-3 px-10 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold transition-all">
+                    Close Report
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SKU Inspector Modal */}
       {inspectedItem && (
@@ -337,6 +382,10 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                   <p className="text-xl font-bold text-slate-900">{(inspectedItem.accuracy * 100).toFixed(2)}%</p>
                 </div>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">3m Forecast Units</p>
+                  <p className="text-xl font-bold text-slate-900">{inspectedItem.sales3mforecast.toLocaleString()}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">3m Actuals Units</p>
                   <p className="text-xl font-bold text-slate-900">{inspectedItem.salesthreeMonthActuals.toLocaleString()}</p>
                 </div>
@@ -381,7 +430,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         <button onClick={() => setActiveTab(RiskCategory.SHORTFALL)} className={`p-6 rounded-3xl border-2 transition-all text-left shadow-sm hover:shadow-lg ${activeTab === RiskCategory.SHORTFALL ? 'border-rose-500 bg-white ring-8 ring-rose-50' : 'border-white bg-white hover:border-slate-100'}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl shadow-inner"><AlertTriangle className="w-7 h-7" /></div>
@@ -489,29 +538,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                         </div>
                     </div>
                 </div>
-
-                {generatedReport && (
-                    <div className="bg-indigo-50/50 border border-indigo-100 rounded-[2.5rem] p-12 space-y-10 animate-in zoom-in-95 duration-500">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                             <div className="space-y-1">
-                                <h3 className="text-2xl font-black text-indigo-900 flex items-center gap-4">
-                                  <CheckCircle className="w-10 h-10 text-indigo-600" />
-                                  Strategic Risk Assessment
-                                </h3>
-                                <p className="text-indigo-600/70 font-bold uppercase tracking-widest text-[10px]">AI-Generated Executive Briefing</p>
-                             </div>
-                             <button onClick={downloadHtml} className="w-full md:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-2xl font-bold transition-all shadow-sm">
-                                <Download className="w-5 h-5" />
-                                Export Dashboard
-                             </button>
-                        </div>
-                        <div className="bg-white p-12 rounded-3xl border border-indigo-100 shadow-2xl shadow-indigo-100/20 max-h-[600px] overflow-y-auto custom-scrollbar">
-                            <div className="prose prose-indigo max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap font-sans text-lg">
-                                {generatedReport.emailText}
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
           ) : (
             renderTable(
@@ -521,6 +547,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
               activeTab === RiskCategory.ON_HAND ? analysis.allItems :
               activeTab === RiskCategory.WOO ? analysis.allItems.filter(i => i.woo > 0) :
               activeTab === RiskCategory.IN_TRANSIT ? analysis.allItems.filter(i => i.transit > 0) :
+              activeTab === RiskCategory.SALES_3M_FORECAST ? analysis.allItems.filter(i => i.sales3mforecast > 0) :
               activeTab === RiskCategory.SALES_3M ? analysis.allItems.filter(i => i.salesthreeMonthActuals > 0) :
               [],
               activeTab as RiskCategory

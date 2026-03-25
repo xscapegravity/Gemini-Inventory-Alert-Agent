@@ -204,7 +204,7 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
         ]);
 
         // Trigger 'diagnosticMode' (3rd param true)
-        const response = await generateExecutiveReport(apiMockData, "yuKVek24", true);
+        const response = await generateExecutiveReport(apiMockData, import.meta.env.VITE_ACCESS_TOKEN, true);
         
         if (response && response.emailText === "Diagnostic OK") {
           currentResults[apiIndex] = {
@@ -221,7 +221,7 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       } catch (e: any) {
         let errorDetails = `Error: ${e.message}.`;
         if (e.message.includes("401")) {
-            errorDetails += " Unauthorized: Check if ACCESS_TOKEN matches. (Default: yuKVek24)";
+            errorDetails += " Unauthorized: Check if VITE_ACCESS_TOKEN matches.";
         } else if (e.message.includes("500")) {
             errorDetails += " Server Error: GEMINI_API_KEY might be missing or invalid in your local environment.";
         } else if (e.message.includes("fetch")) {

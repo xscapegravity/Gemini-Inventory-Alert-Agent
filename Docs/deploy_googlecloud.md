@@ -36,7 +36,7 @@ This guide outlines the steps to deploy the Inventory Alert Agent to **Google Cl
     - **Container Port**: Set this to `3000` (matches the app configuration).
     - **Environment Variables**: Add the following:
       - `GEMINI_API_KEY`: `[YOUR_GEMINI_API_KEY]`
-      - `ACCESS_TOKEN`: `yuKVek24` (or your chosen passcode)
+      - `ACCESS_TOKEN`: `[YOUR_ACCESS_TOKEN]` (or your chosen passcode)
       - `NODE_ENV`: `production`
 
 ### Step 4: Deploy
@@ -63,7 +63,7 @@ gcloud run deploy inventory-agent \
   --region us-central1 \
   --allow-unauthenticated \
   --port 3000 \
-  --set-env-vars="GEMINI_API_KEY=[YOUR_KEY],ACCESS_TOKEN=yuKVek24,NODE_ENV=production"
+  --set-env-vars="GEMINI_API_KEY=[YOUR_KEY],ACCESS_TOKEN=[YOUR_ACCESS_TOKEN],NODE_ENV=production"
 ```
 
 ---

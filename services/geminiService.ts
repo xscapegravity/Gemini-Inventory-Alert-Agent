@@ -10,6 +10,7 @@ export const generateExecutiveReport = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-access-token': accessToken,
       },
       body: JSON.stringify({ analysis, diagnosticMode }),
     });
@@ -22,6 +23,11 @@ export const generateExecutiveReport = async (
     return await response.json();
   } catch (error: any) {
     console.error("Gemini Service Error:", error);
-    throw new Error(`Intelligence Error: ${error.message || "Failed to generate AI report."}`);
+    // If the error message is already friendly (from our server), just throw it
+    const message = error.message || "Failed to generate AI report.";
+    if (message.includes("API key") || message.includes("AI service")) {
+      throw new Error(message);
+    }
+    throw new Error(`Intelligence Error: ${message}`);
   }
 };

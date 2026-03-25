@@ -34,7 +34,7 @@ Cloud Run is the recommended path for GCP as it handles scaling and SSL automati
       --platform managed \
       --region us-central1 \
       --allow-unauthenticated \
-      --set-env-vars GEMINI_API_KEY=[YOUR_KEY],ACCESS_TOKEN=yuKVek24,NODE_ENV=production
+      --set-env-vars GEMINI_API_KEY=[YOUR_KEY],ACCESS_TOKEN=[YOUR_ACCESS_TOKEN],NODE_ENV=production
     ```
 
 ---

@@ -8,7 +8,7 @@ The **Inventory Alert Agent** is a specialized supply chain intelligence platfor
 ## 2. Functional Requirements
 
 ### 2.1. Authentication & Security
-- **Passcode Protection**: The application must be gated by a "Security Portal" requiring a specific passcode (`yuKVek24`) to access the terminal.
+- **Passcode Protection**: The application must be gated by a "Security Portal" requiring a specific passcode (configured via environment variable) to access the terminal.
 - **Session Management**: Secure handling of access tokens for API requests to the backend.
 - **Environment Security**: Sensitive API keys (Gemini) must be managed server-side and never exposed to the client.
 

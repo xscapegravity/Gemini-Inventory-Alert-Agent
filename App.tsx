@@ -12,7 +12,7 @@ import { auth, db } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-const ADMIN_EMAIL = "martyn.frank@gmail.com";
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 function App() {
   const [analysis, setAnalysis] = useState<AggregatedAnalysis | null>(null);
@@ -262,7 +262,7 @@ function App() {
                 analysis={analysis} 
                 fileName={fileName} 
                 onReset={handleReset}
-                accessToken={"yuKVek24"} 
+                accessToken={import.meta.env.VITE_ACCESS_TOKEN} 
               />
             )}
           </>

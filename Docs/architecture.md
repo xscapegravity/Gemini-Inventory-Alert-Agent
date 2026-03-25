@@ -25,7 +25,7 @@ The application employs a dual-layer security model to protect supply chain inte
 
 ### A. Agent Passcode
 Access to the terminal is gated by a secure passcode mechanism:
-- **Passcode:** `yuKVek24`
+- **Passcode:** `redacted`
 - **Implementation:** 
   - **Frontend:** Managed in `App.tsx`. Users must authenticate via the "Security Portal" before any data processing or AI modules are initialized.
   - **Backend:** The `accessToken` is passed in the request body to authorize AI analysis requests.

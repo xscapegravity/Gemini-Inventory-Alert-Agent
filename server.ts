@@ -30,9 +30,15 @@ async function startServer() {
   app.post("/api/analyze", async (req, res) => {
     const { analysis, diagnosticMode } = req.body;
     const apiKey = (process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
+    const serverAccessToken = process.env.ACCESS_TOKEN || process.env.VITE_ACCESS_TOKEN;
+    const clientAccessToken = req.headers['x-access-token'];
+
+    if (serverAccessToken && clientAccessToken !== serverAccessToken) {
+      return res.status(401).json({ error: "Unauthorized: Invalid access token." });
+    }
 
     if (!apiKey) {
-      return res.status(500).json({ error: "Gemini API Key is missing on the server." });
+      return res.status(500).json({ error: "The AI service is currently unavailable because the Gemini API Key is missing on the server. Please contact the administrator." });
     }
 
     if (diagnosticMode) {
@@ -96,7 +102,18 @@ async function startServer() {
       res.json(JSON.parse(text));
     } catch (error: any) {
       console.error("[server] Gemini Error:", error);
-      res.status(500).json({ error: error.message || "Failed to generate AI report" });
+      let errorMessage = error.message || "Failed to generate AI report";
+      
+      // Detect common Gemini API key issues (expired, invalid, missing)
+      if (errorMessage.includes("API_KEY_INVALID") || 
+          errorMessage.includes("API key expired") || 
+          errorMessage.includes("INVALID_ARGUMENT") ||
+          errorMessage.includes("400") ||
+          errorMessage.includes("403")) {
+        errorMessage = "The AI service is currently unavailable due to an invalid or expired API key. Please contact the administrator to renew the GEMINI_API_KEY in the environment settings.";
+      }
+      
+      res.status(500).json({ error: errorMessage });
     }
   });
 

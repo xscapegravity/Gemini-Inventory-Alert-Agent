@@ -1,0 +1,32 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User's email address"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "standard"],
+          "description": "User's access level"
+        },
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID"
+        }
+      },
+      "required": ["email", "role", "uid"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profile documents keyed by Auth UID"
+    }
+  }
+}

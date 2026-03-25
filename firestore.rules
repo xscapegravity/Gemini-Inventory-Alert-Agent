@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        request.auth.token.email == "martyn.frank@gmail.com"
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role', 'uid']) &&
+             data.email is string &&
+             data.role in ['admin', 'standard'] &&
+             data.uid is string &&
+             (!('password' in data) || data.password is string);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      // Allow unauthenticated access for all operations as requested
+      allow read, write: if true;
+    }
+  }
+}

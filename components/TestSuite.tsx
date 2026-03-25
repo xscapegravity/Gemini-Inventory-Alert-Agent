@@ -71,8 +71,9 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
         return {
             ok: true,
             status: 'passed',
-            msg: `Server Online (v${data.version || '1.0'})`,
-            duration: Math.round(performance.now() - start)
+            msg: `Server Online (${data.engine || 'TS'} v${data.version || '1.2'})`,
+            duration: Math.round(performance.now() - start),
+            details: `Backend is reachable. API Key Detected: ${data.has_api_key !== false ? 'Yes' : 'No'}`
         };
     } catch (e: any) {
         return {
@@ -80,8 +81,8 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
             status: 'failed',
             msg: "Connection Failed",
             details: `Backend unreachable. 
-              1. Ensure 'app.py' is running (check terminal). 
-              2. If local, verify port 8080 is open. 
+              1. Ensure 'server.ts' is running. 
+              2. If local, verify port 3000 is open. 
               3. If deployed, check Cloud Run logs for startup crashes.
               Error: ${e.message}`,
             duration: Math.round(performance.now() - start)
@@ -219,13 +220,17 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       } catch (e: any) {
         let errorDetails = `Error: ${e.message}.`;
         if (e.message.includes("401")) {
-            errorDetails += " Unauthorized: Check if ACCESS_TOKEN matches.";
+            errorDetails += " Unauthorized: Check if ACCESS_TOKEN matches. (Default: yuKVek24)";
         } else if (e.message.includes("500")) {
-            errorDetails += " Server Error: Check if GEMINI_API_KEY is valid and has quota.";
+            errorDetails += " Server Error: GEMINI_API_KEY might be missing or invalid in your local environment.";
         } else if (e.message.includes("fetch")) {
-            errorDetails += " Network Error: The backend might have crashed during the AI call.";
+            errorDetails += " Network Error: The backend might not be running. Run 'npm run dev' in your terminal.";
         } else {
             errorDetails += " Check server logs for 'API_KEY' or 'Quota' issues.";
+        }
+        
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            errorDetails += "\n\nLOCAL DEV TIP: Create a .env file with GEMINI_API_KEY=your_key_here";
         }
 
         currentResults[apiIndex] = {
@@ -349,7 +354,7 @@ export const TestSuite: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                                     <Terminal className="w-3 h-3 text-slate-500 shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-[9px] font-bold text-slate-300 uppercase">Local Terminal</p>
-                                        <p className="text-[9px] text-slate-500 leading-tight">Click terminal, press <code className="bg-black/50 px-1 rounded text-slate-300">Ctrl+C</code>, then run <code className="bg-black/50 px-1 rounded text-slate-300">python app.py</code></p>
+                                        <p className="text-[9px] text-slate-500 leading-tight">Click terminal, press <code className="bg-black/50 px-1 rounded text-slate-300">Ctrl+C</code>, then run <code className="bg-black/50 px-1 rounded text-slate-300">npm run dev</code></p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 items-start">

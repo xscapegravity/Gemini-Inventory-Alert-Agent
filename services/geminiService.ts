@@ -5,49 +5,14 @@ export const generateExecutiveReport = async (
   accessToken: string,
   diagnosticMode: boolean = false
 ) => {
-  // Prepare a compact version of the data for the AI
-  const context = {
-    summary: {
-      totalItems: analysis.totalItems,
-      shortfallCount: analysis.shortfall.length,
-      oversupplyCount: analysis.oversupply.length,
-      deadStockCount: analysis.deadStock.length
-    },
-    criticalItems: [
-      ...analysis.shortfall.slice(0, 10).map(r => ({
-        sku: r.item.sku,
-        risk: 'Shortfall',
-        moh: r.item.mohTotal,
-        onHand: r.item.onHand,
-        accuracy: r.item.accuracy
-      })),
-      ...analysis.oversupply.slice(0, 5).map(r => ({
-        sku: r.item.sku,
-        risk: 'Oversupply',
-        moh: r.item.mohTotal,
-        onHand: r.item.onHand,
-        accuracy: r.item.accuracy
-      }))
-    ]
-  };
-
   try {
-    // Attempt to call the local API
-    // We use a timeout to handle cases where the backend is not responding
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout for AI generation
-
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': accessToken
       },
-      body: JSON.stringify({ context, diagnosticMode }),
-      signal: controller.signal
+      body: JSON.stringify({ analysis, diagnosticMode }),
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -56,12 +21,7 @@ export const generateExecutiveReport = async (
 
     return await response.json();
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      throw new Error("AI Synthesis timed out. The data set might be too large or the model is busy.");
-    }
-    
-    // Fallback/Retry logic for common network issues
     console.error("Gemini Service Error:", error);
-    throw error;
+    throw new Error(`Intelligence Error: ${error.message || "Failed to generate AI report."}`);
   }
 };

@@ -46,3 +46,12 @@ export interface AggregatedAnalysis {
   allItems: InventoryItem[]; 
   totalItems: number;
 }
+
+export type UserRole = 'admin' | 'standard';
+
+export interface User {
+  email: string;
+  role: UserRole;
+  uid?: string;
+  password?: string; // Optional because we don't always want to pass it around
+}

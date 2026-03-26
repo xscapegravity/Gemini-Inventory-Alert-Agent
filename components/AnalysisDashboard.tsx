@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   ScatterChart, Scatter, Label, ReferenceLine, LineChart, Line, Legend
 } from 'recharts';
+import Markdown from 'react-markdown';
 
 interface AnalysisDashboardProps {
   analysis: AggregatedAnalysis;
@@ -335,8 +336,8 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             
             <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar flex-1">
                 <div className="bg-slate-50 p-8 sm:p-12 rounded-3xl border border-slate-100 shadow-inner">
-                    <div className="prose prose-indigo max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap font-sans text-base sm:text-lg">
-                        {generatedReport.emailText}
+                    <div className="markdown-body prose prose-indigo max-w-none text-slate-700 leading-relaxed font-sans text-base sm:text-lg">
+                        <Markdown>{generatedReport.emailText}</Markdown>
                     </div>
                 </div>
             </div>

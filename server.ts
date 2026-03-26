@@ -80,13 +80,14 @@ async function startServer() {
                 
                 TASK:
                 1. Write a professional Executive Summary email (emailText) to the Supply Chain Director.
-                   The email MUST include:
-                   - A clear Subject Line at the top.
+                   The email MUST be in Markdown format and include:
+                   - A clear Subject Line at the top (use # for the header).
                    - A formal greeting (e.g., Dear Supply Chain Director,).
                    - Multiple paragraphs explaining the current inventory status, risks (shortfalls, oversupply, dead stock), and recommended actions.
-                   - Use bullet points for key items if necessary.
+                   - Use bold text (**SKU**) for critical items.
+                   - Use bullet points for key items and recommendations.
                    - A professional sign-off and signature block.
-                   - Use standard line breaks (\n) between sections and paragraphs.
+                   - Use standard Markdown spacing between sections.
                 2. Create a clean, interactive HTML dashboard (htmlDashboard) using Tailwind CSS. Use a dark theme with indigo accents.`
               }
             ]

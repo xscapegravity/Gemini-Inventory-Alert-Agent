@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { UserPlus, Shield, User as UserIcon, Key, Copy, Check, Trash2, Users, Loader2, AlertCircle, RefreshCcw } from 'lucide-react';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -20,7 +20,8 @@ export const UserManagement: React.FC = () => {
   const [isProvisioning, setIsProvisioning] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, 'users'));
+    const path = 'users';
+    const q = query(collection(db, path));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const userList: User[] = [];
       snapshot.forEach((doc) => {
@@ -30,6 +31,9 @@ export const UserManagement: React.FC = () => {
       setLoading(false);
     }, (err) => {
       console.error("Firestore Error:", err);
+      if (err.message.includes('permission')) {
+        handleFirestoreError(err, OperationType.LIST, path);
+      }
       setError("Failed to load users. Check your permissions.");
       setLoading(false);
     });
@@ -57,12 +61,17 @@ export const UserManagement: React.FC = () => {
       const uid = userCredential.user.uid;
       
       // 2. Create in Firestore
-      await setDoc(doc(db, 'users', uid), {
-        email: newEmail,
-        role: newRole,
-        uid: uid,
-        password: password // Store password for admin visibility
-      });
+      const path = `users/${uid}`;
+      try {
+        await setDoc(doc(db, 'users', uid), {
+          email: newEmail,
+          role: newRole,
+          uid: uid,
+          password: password // Store password for admin visibility
+        });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, path);
+      }
       
       // 3. Clean up secondary app
       await signOut(secondaryAuth);
@@ -85,15 +94,20 @@ export const UserManagement: React.FC = () => {
   };
 
   const handleChangeRole = async (uid: string, newRole: UserRole) => {
+    const path = `users/${uid}`;
     try {
       await updateDoc(doc(db, 'users', uid), { role: newRole });
     } catch (err) {
       console.error("Update Role Error:", err);
+      if (err instanceof Error && err.message.includes('permission')) {
+        handleFirestoreError(err, OperationType.UPDATE, path);
+      }
       setError("Failed to update role.");
     }
   };
 
   const handleDeleteUser = async (uid: string) => {
+    const path = `users/${uid}`;
     try {
       // Note: This only deletes from Firestore. 
       // Deleting from Firebase Auth requires Admin SDK or the user to be logged in.
@@ -101,11 +115,15 @@ export const UserManagement: React.FC = () => {
       await deleteDoc(doc(db, 'users', uid));
     } catch (err) {
       console.error("Delete User Error:", err);
+      if (err instanceof Error && err.message.includes('permission')) {
+        handleFirestoreError(err, OperationType.DELETE, path);
+      }
       setError("Failed to delete user profile.");
     }
   };
 
   const handleResetPassword = async (uid: string) => {
+    const path = `users/${uid}`;
     const newPassword = generatePassword();
     try {
       await updateDoc(doc(db, 'users', uid), { password: newPassword });
@@ -113,6 +131,9 @@ export const UserManagement: React.FC = () => {
       setError(null);
     } catch (err) {
       console.error("Reset Password Error:", err);
+      if (err instanceof Error && err.message.includes('permission')) {
+        handleFirestoreError(err, OperationType.UPDATE, path);
+      }
       setError("Failed to reset password in database.");
     }
   };

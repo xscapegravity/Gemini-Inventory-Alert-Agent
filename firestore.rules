@@ -17,7 +17,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && (
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        request.auth.token.email == "[ADMIN_EMAIL]" // REPLACE_WITH_YOUR_ADMIN_EMAIL
+        request.auth.token.email == "martyn.frank@gmail.com"
       );
     }
 
@@ -34,8 +34,17 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{uid} {
-      // Allow unauthenticated access for all operations as requested
-      allow read, write: if true;
+      // Allow users to read their own data, and admins to read all user data
+      allow read: if isOwner(uid) || isAdmin();
+      
+      // Allow users to create their own profile if authenticated
+      // Allow users to update their own profile, and admins to update any profile
+      // Ensure data validation on write
+      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data);
+      
+      // Allow only admins to delete users
+      allow delete: if isAdmin();
     }
   }
 }

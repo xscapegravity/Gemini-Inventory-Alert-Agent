@@ -8,7 +8,7 @@ import { parseFile, analyzeInventory } from './utils/dataProcessor';
 import { AggregatedAnalysis, User, UserRole } from './types';
 
 // Firebase Imports
-import { auth, db } from './firebase';
+import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -36,6 +36,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        const path = `users/${firebaseUser.uid}`;
         try {
           // Fetch role from Firestore
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
@@ -59,6 +60,11 @@ function App() {
           });
         } catch (err) {
           console.error("Error fetching user role:", err);
+          // Only throw if it's a permission error that we want to handle specially
+          if (err instanceof Error && err.message.includes('permission')) {
+            handleFirestoreError(err, OperationType.GET, path);
+          }
+          
           // Fallback for bootstrap admin if Firestore fails initially
           if (firebaseUser.email === ADMIN_EMAIL) {
             setCurrentUser({ email: firebaseUser.email || '', role: 'admin' });

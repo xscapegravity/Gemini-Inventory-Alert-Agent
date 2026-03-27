@@ -11,12 +11,13 @@ import Markdown from 'react-markdown';
 
 interface AnalysisDashboardProps {
   analysis: AggregatedAnalysis;
+  history: any[];
   fileName: string;
   onReset: () => void;
   accessToken: string;
 }
 
-export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, fileName, onReset, accessToken }) => {
+export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, history, fileName, onReset, accessToken }) => {
   const [activeTab, setActiveTab] = useState<RiskCategory | 'Overview'>('Overview');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [generatedReport, setGeneratedReport] = useState<{ emailText: string, htmlDashboard: string } | null>(null);
@@ -125,31 +126,23 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
   ];
 
   const trendData = useMemo(() => {
-    const months = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
-    const s = analysis.shortfall.length;
-    const o = analysis.oversupply.length;
-    const d = analysis.deadStock.length;
+    if (history && history.length > 0) {
+      return history.map(h => ({
+        name: h.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        Shortfall: h.shortfall,
+        Oversupply: h.oversupply,
+        DeadStock: h.deadStock
+      }));
+    }
     
-    // Seeded-like random based on counts to keep it stable for the same data
-    const seed = s + o + d;
-    const pseudoRandom = (offset: number) => {
-      const x = Math.sin(seed + offset) * 10000;
-      return x - Math.floor(x);
-    };
-
-    return months.map((month, i) => {
-      const isLast = i === months.length - 1;
-      if (isLast) return { name: month, Shortfall: s, Oversupply: o, DeadStock: d };
-      
-      const diff = months.length - 1 - i;
-      return {
-        name: month,
-        Shortfall: Math.max(0, Math.round(s + (pseudoRandom(i) * 10 - 5) * diff)),
-        Oversupply: Math.max(0, Math.round(o + (pseudoRandom(i + 10) * 8 - 4) * diff)),
-        DeadStock: Math.max(0, Math.round(d + (pseudoRandom(i + 20) * 6 - 3) * diff)),
-      };
-    });
-  }, [analysis]);
+    // Fallback to current data if no history yet
+    return [{
+      name: 'Current',
+      Shortfall: analysis.shortfall.length,
+      Oversupply: analysis.oversupply.length,
+      DeadStock: analysis.deadStock.length
+    }];
+  }, [history, analysis]);
 
   const shortfallTotalUnits = analysis.shortfall.reduce((sum, r) => sum + r.item.onHand, 0);
   const oversupplyTotalUnits = analysis.oversupply.reduce((sum, r) => sum + r.item.onHand, 0);

@@ -10,12 +10,13 @@ import { AggregatedAnalysis, User, UserRole } from './types';
 // Firebase Imports
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 function App() {
   const [analysis, setAnalysis] = useState<AggregatedAnalysis | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,9 +56,13 @@ function App() {
           }
 
           setCurrentUser({
+            uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             role: role
           });
+
+          // Fetch history for the logged in user
+          fetchHistory(firebaseUser.uid);
         } catch (err) {
           console.error("Error fetching user role:", err);
           // Only throw if it's a permission error that we want to handle specially
@@ -67,23 +72,46 @@ function App() {
           
           // Fallback for bootstrap admin if Firestore fails initially
           if (firebaseUser.email === ADMIN_EMAIL) {
-            setCurrentUser({ email: firebaseUser.email || '', role: 'admin' });
+            setCurrentUser({ uid: firebaseUser.uid, email: firebaseUser.email || '', role: 'admin' });
           } else {
-            setCurrentUser({ email: firebaseUser.email || '', role: 'standard' });
+            setCurrentUser({ uid: firebaseUser.uid, email: firebaseUser.email || '', role: 'standard' });
           }
         }
       } else {
         // Default to guest user for unauthenticated access
         setCurrentUser({
+          uid: 'guest',
           email: 'guest@access.granted',
           role: 'standard'
         });
+        setHistory([]);
       }
       setIsAuthReady(true);
     });
 
     return () => unsubscribe();
   }, []);
+
+  const fetchHistory = async (uid: string) => {
+    if (!uid || uid === 'guest') return;
+    try {
+      const q = query(
+        collection(db, 'inventoryHistory'),
+        where('uid', '==', uid),
+        orderBy('timestamp', 'desc'),
+        limit(20)
+      );
+      const querySnapshot = await getDocs(q);
+      const historyData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: (doc.data().timestamp as Timestamp)?.toDate() || new Date()
+      }));
+      setHistory(historyData.reverse()); // Chronological order
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +169,24 @@ function App() {
       } else {
         const result = analyzeInventory(items);
         setAnalysis(result);
+
+        // Save to history if user is logged in
+        if (currentUser && currentUser.uid && currentUser.uid !== 'guest') {
+          try {
+            await addDoc(collection(db, 'inventoryHistory'), {
+              timestamp: serverTimestamp(),
+              shortfall: result.shortfall.length,
+              oversupply: result.oversupply.length,
+              deadStock: result.deadStock.length,
+              totalItems: result.totalItems,
+              uid: currentUser.uid
+            });
+            // Refresh history after saving
+            fetchHistory(currentUser.uid);
+          } catch (err) {
+            console.error("Error saving inventory history:", err);
+          }
+        }
       }
     } catch (err: any) {
       const msg = err.message || "Unknown error";
@@ -266,6 +312,7 @@ function App() {
             ) : (
               <AnalysisDashboard 
                 analysis={analysis} 
+                history={history}
                 fileName={fileName} 
                 onReset={handleReset}
                 accessToken={import.meta.env.VITE_ACCESS_TOKEN} 

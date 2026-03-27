@@ -21,12 +21,49 @@
         }
       },
       "required": ["email", "role", "uid"]
+    },
+    "InventoryHistory": {
+      "title": "Inventory History",
+      "description": "Historical inventory risk counts",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the analysis was performed"
+        },
+        "shortfall": {
+          "type": "integer",
+          "description": "Number of items with shortfall"
+        },
+        "oversupply": {
+          "type": "integer",
+          "description": "Number of items with oversupply"
+        },
+        "deadStock": {
+          "type": "integer",
+          "description": "Number of items with dead stock"
+        },
+        "totalItems": {
+          "type": "integer",
+          "description": "Total number of items analyzed"
+        },
+        "uid": {
+          "type": "string",
+          "description": "UID of the user who performed the analysis"
+        }
+      },
+      "required": ["timestamp", "shortfall", "oversupply", "deadStock", "totalItems", "uid"]
     }
   },
   "firestore": {
     "/users/{uid}": {
       "schema": "User",
       "description": "User profile documents keyed by Auth UID"
+    },
+    "/inventoryHistory/{historyId}": {
+      "schema": "InventoryHistory",
+      "description": "Historical inventory risk counts"
     }
   }
 }

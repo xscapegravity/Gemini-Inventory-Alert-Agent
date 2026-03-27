@@ -46,5 +46,16 @@ service cloud.firestore {
       // Allow only admins to delete users
       allow delete: if isAdmin();
     }
+
+    match /inventoryHistory/{historyId} {
+      // Users can read their own history, admins can read all
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      
+      // Users can create their own history records
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      
+      // Only admins can modify or delete history
+      allow update, delete: if isAdmin();
+    }
   }
 }
